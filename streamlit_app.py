@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 
 # Set up the API key
 api_key = st.secrets['PER_API_KEY']
@@ -10,27 +11,50 @@ st.title("🎈 Company Profile Generator")
 # User input for company name
 company_name = st.text_input("Enter the company name:", placeholder="e.g., D.S Electrical Works Nagpur")
 
+# Function to split content into sections by headers
+def parse_profile_sections(content):
+    sections = {}
+    current_header = None
+    lines = content.split('\n')
+    for line in lines:
+        if line.strip().endswith(':') and len(line.strip()) < 80:
+            current_header = line.strip().rstrip(':')
+            sections[current_header] = ""
+        elif current_header:
+            sections[current_header] += line.strip() + '\n'
+    return sections
+
 # Button to trigger the API call
 if st.button("Get Company Profile"):
     if company_name.strip():
-        # Define the API payload
+        # API request setup
         url = "https://api.perplexity.ai/chat/completions"
+        prompt = f"""
+You are an AI assistant tasked with creating a comprehensive company profile using web resources.
+
+Your goal is to extract and summarize as much of the following information as possible based on the company name: "{company_name}". Use only publicly available online sources.
+
+Prioritize these fields: [Company Name, Establishment Year, Business Type, Addresses, GST, Website, Contact, Key People, Services, Turnover, Size, Industries, Certifications, Clients, Overview, Competitors, Google/LinkedIn/Justdial info, and Other Details].
+
+If a field isn't found, write “Not Available”.
+Return clearly under headers like:
+Company Name:
+Year of Establishment:
+GST Number:
+...
+        """
+
         payload = {
             "model": "sonar-pro",
             "messages": [
-                {
-                    "role": "system",
-                    "content": "You are an AI assistant that builds detailed company profiles using online information. Use the exact company name for the search. Gather and summarize the following: Basic Information (Company Name, Founded Year, Headquarters, Company Size, Website, Industry Vertical, Location), Business Overview (Description, Mission Statement, Products/Services, Target Market, Major Competitors), Google Search Results (industry, services, notable news, GST number), LinkedIn Profile (company size, industry, key details), Company Website (services, mission, contact info), Key Professionals (important people and their roles), and Additional Sources (reviews, ratings, service offerings from Glassdoor, Indiamart, Justdial, etc.). Present the output in this format: Basic Information: Company Name: [Name] Founded Year: [Year] Headquarters: [Address] Company Size: [Size] Website: [URL] Industry Vertical: [Industry] Location: [City, State, Country] Business Overview: Description: [Description] Mission Statement: [Mission] Products and Services Offered: [List of products/services] Target Market: [Target industries] Google Search Summary: [Summarized findings with citations] Sources: [Source names and links] Key Personnel: [List of names, roles, and details]. Ensure the information is accurate, concise, and properly cited"
-                },
-                {
-                    "role": "user",
-                    "content": f"Give me an online company profile of the company \"{company_name}\"."
-                }
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Build a company profile for: {company_name}"}
             ],
             "temperature": 0.2,
             "top_p": 0.9,
             "stream": False,
         }
+
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
@@ -46,16 +70,28 @@ if st.button("Get Company Profile"):
             content = response_data.get("choices", [{}])[0].get("message", {}).get("content", "No content available.")
             citations = response_data.get("citations", [])
 
-            # Display the results
-            st.subheader("Response Content")
-            st.markdown(content.replace('\n', '\n\n'))  # Format content with line breaks
+            # Process and Display Profile
+            st.subheader("📄 Company Profile")
+            sections = parse_profile_sections(content)
 
+            for header, section_content in sections.items():
+                if header.lower().startswith("google search") or "summary" in header.lower():
+                    st.subheader(f"🔍 {header}")
+                    st.code(section_content.strip())
+                elif header.lower() in ["contact", "certifications", "key personnel"]:
+                    st.subheader(f"📌 {header}")
+                    st.info(section_content.strip())
+                else:
+                    st.subheader(header)
+                    st.markdown(section_content.strip())
+
+            # Show citations if available
             if citations:
-                st.subheader("Citations")
+                st.subheader("🔗 Citations")
                 for i, citation in enumerate(citations, 1):
-                    st.write(f"{i}: {citation}")
+                    st.markdown(f"{i}. {citation}")
             else:
-                st.write("No citations available.")
+                st.caption("No citations provided by the API.")
 
         except requests.exceptions.RequestException as e:
             st.error(f"An error occurred: {e}")
