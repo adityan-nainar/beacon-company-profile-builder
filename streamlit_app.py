@@ -39,15 +39,32 @@ Priority 2: **Thoroughly search for and list at least 3 to 5 competitors** of th
 - Specialization or Key Products/Services
 - Online Source or Reference
 
-Search on platforms like: Google, Indiamart, Justdial, LinkedIn, Glassdoor, company directories, business listing portals, etc.
+Make a serious attempt to fetch company info from the following sources:
+- IndiaMART
+- TradeIndia
+- ExportIndia
+- Facebook
+- Just Dial
+- Zuaba
+- KnowyourGST
+- Clartax
+- Crunchbase
+- Zoominfo
+- LinkedIn
+- Google search
+- Company directories
+- Glassdoor
 
-If limited data is found, return partial results and note "Not Available" where applicable. Format clearly under headers like:
+Use only publicly available information. If data is unavailable, write “Not Available”. Return clean output under headers like:
 - Company Name
 - Address
 - GST
-- Website
-- ...
+- Products/Services
 - Competitor List
+- Key People
+- Website
+- Contact
+- Google Search Summary
         """
 
         payload = {
